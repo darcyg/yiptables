@@ -1,0 +1,43 @@
+- block:
+    !rule chain: INPUT
+  rules:
+    - target: DROP invalid packets
+      state: INVALID
+
+    - target: ACCEPT local connections
+      iface: lo
+
+    - target: ACCEPT new connections on ssh, http(s)
+      state: NEW
+      proto: tcp
+      dport: '{wan_ports}'
+
+    - target: ACCEPT incoming dhcp
+      proto: udp
+      dport: 68
+
+    - target: ACCEPT pings
+      proto: icmp
+      icmp-type: '{item}'
+      with_items:
+        - 0
+        - 8
+
+- block:
+    !rule chain: FORWARD
+    !rule proto: tcp
+  rules:
+    - target: ACCEPT new connections to vm services
+      oface: '{ivm}'
+      daddr: '{vm_ip}'
+      state: NEW
+      dport: '{vm_ports}'
+
+    - target: ACCEPT vm already established connections
+      oface: '{ivm}'
+      state: [RELATED, ESTABLISHED]
+
+    - target: ACCEPT vm outgoing connections
+      iface: '{ivm}'
+      state: [NEW, RELATED, ESTABLISHED]
+      dport: '{vm_ports}'

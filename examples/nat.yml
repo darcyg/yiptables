@@ -1,0 +1,29 @@
+- block:
+    !rule chain: PREROUTING
+  rules:
+    - target: DNAT incoming packets meant for vm
+      proto: tcp
+      daddr: '{vm_ip}'
+      dport: '{vm_ports}'
+      to-daddr: '{vm_ip}'
+
+- block:
+    !rule chain: POSTROUTING
+    snat_range: ':1024-65535'
+  rules:
+    - target: RETURN if a vm packet hits a reserved range
+      daddr: '{item}'
+      with_items:
+        - 224.0.0.0/24
+        - 255.255.255.255/32
+
+    - target: SNAT outgoing vm packets
+      proto: '{proto}'
+      saddr: '{vm_ip}'
+      oface: '{iwan}'
+      to-saddr: '{wan_ip}{snat_range}'
+      with_items:
+        - proto: tcp
+        - proto: udp
+        - proto: any
+          snat_range: ''

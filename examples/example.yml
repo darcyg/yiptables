@@ -1,0 +1,24 @@
+vars:
+  - wan_ip: 42.42.42.42
+  - vm_ip: 42.42.42.41
+  - vm_subnet: '{vm_ip}/32'
+  - ivm: ivm
+  - iwan: eth0
+  - vm_ports: 3306,4242:4244
+  - wan_ports: 22,80,443
+
+filter:
+  chains:
+    INPUT:   ACCEPT
+    OUTPUT:  ACCEPT
+    FORWARD: ACCEPT
+  rules: !import filter.yml
+
+
+nat:
+  chains:
+    PREROUTING: ACCEPT
+    INPUT: ACCEPT
+    OUTPUT: ACCEPT
+    POSTROUTING:  ACCEPT
+  rules: !import nat.yml

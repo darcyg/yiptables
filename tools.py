@@ -1,7 +1,23 @@
+# Yiptables, a yaml to iptables-restore tranpiler
+# Copyright (C) 2017 Victor Collod <victor.collod@prologin.org>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import re
 from collections import ChainMap
 
-simple_format = re.compile('^{[^}]+}$')
+simple_format = re.compile(r'^{([^{} \t()\*\\=/%+-]+)}$')
 
 
 def yip_stringize(e):
@@ -10,11 +26,22 @@ def yip_stringize(e):
     return str(e)
 
 
+def yip_get_single_var(scope, string):
+    if not isinstance(string, str):
+        return None
+    match = re.match(simple_format, string)
+    if match:
+        vname = match.group(1)
+        lookup_res = scope.get(vname)
+        if lookup_res is None:
+            raise SyntaxError(f'Undefined variable `{vname}`')
+        return lookup_res
+    return None
+
+
 def yip_str_format(scope, string):
-    if re.match(simple_format, string):
-        lookup_res = scope.get(string[1:-1])
-        return lookup_res if lookup_res is not None else string
-    return string.format(**scope)
+    res = yip_get_single_var(scope, string)
+    return res if res else string.format(**scope)
 
 
 def yip_dict_format(scope, d):
@@ -53,21 +80,51 @@ def yip_flatten_iter(l):
         yield l
 
 
+def yip_split(s, splitter=re.compile(r'[ \t,]+')):
+    return re.split(splitter, s)
+
+
+def yip_listize(e, transform=lambda x: x):
+    if isinstance(e, str):
+        return yip_split(e)
+    if isinstance(e, list):
+        return e
+    return [e]
+
+
 class Scope(ChainMap):
     def sub_scope(self, local=None):
         return self.new_child(local)
 
-
-class VarScope(Scope):
     def get_vars(self, node, attr='vars'):
         if attr is not None:
             node = node.get(attr)
             if node is None:
                 return
-        print(f'node: {node}')
         for k, v in yip_ld_iter(node):
-            print(f'int::{k}: {v}')
             self[k] = yip_format(self, v)
+
+
+class YipScope(Scope):
+    def __init__(self, *maps, rules=None):
+        super().__init__(*maps)
+        self.rule = Scope(*(rules if rules else {}))
+
+    def sub_scope(self, local=None, rlocal=None):
+        nscope = super().sub_scope(local=local)
+        nscope.rule = self.rule.sub_scope(local=rlocal)
+        return nscope
+
+    def get_vars(self, node, attr='vars'):
+        if attr is not None:
+            node = node.get(attr)
+            if node is None:
+                return
+        for k, v in yip_ld_iter(node):
+            isrule = isinstance(k, Rule)
+            scope = self.rule if isrule else self
+            key = k.value if isrule else k
+            scope[key] = yip_format(self, v)
 
 
 class Registrator():
@@ -85,3 +142,16 @@ class Registrator():
                 self.fmap[fname] = f
             return f
         return assign
+
+
+class Void(object):
+    def __init__(self, value):
+        self.value = value
+
+
+class Not(Void):
+    pass
+
+
+class Rule(Void):
+    pass
