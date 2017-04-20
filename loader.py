@@ -16,7 +16,7 @@
 
 import yaml
 import os.path
-from tools import Not, Rule
+from ast_nodes import Not, Rule, IfDef
 
 
 class YipLoader(yaml.Loader):
@@ -32,6 +32,9 @@ class YipLoader(yaml.Loader):
     def rule_handler(self, node):
         return Rule(self.construct_scalar(node))
 
+    def ifdef_handler(self, node):
+        return IfDef(self.construct_scalar(node))
+
     def not_handler(self, node):
         return Not(self.construct_scalar(node))
 
@@ -43,3 +46,4 @@ class YipLoader(yaml.Loader):
 YipLoader.add_constructor('!import', YipLoader.include_handler)
 YipLoader.add_constructor('!rule', YipLoader.rule_handler)
 YipLoader.add_constructor('!not', YipLoader.not_handler)
+YipLoader.add_constructor('!ifdef', YipLoader.ifdef_handler)

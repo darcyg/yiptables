@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from tools import yip_ld_iter, Not
+from ast_nodes import Not
 from features import feature_map
 
 
@@ -48,18 +48,18 @@ class Rule():
         assert(self.chain)
 
     def build(self, node):
-        node_scope = {k: v for k, v in yip_ld_iter(node)}
-        for fname, val in self.scope.rule.sub_scope(node_scope).items():
+        node_scope = self.scope.rule
+        node_scope.get_vars(node, None, self.scope, node_scope, to_rule=True)
+        print(f'node: {node}')
+        print(f'rule scope: {node_scope}')
+        for fname, val in node_scope.items():
             if fname not in feature_map:
                 raise SyntaxError(f'Unknown feature: {fname}')
 
             isnot = isinstance(val, Not)
-            if isnot:
-                val = val.value
-
             target = feature_map[fname](self, negated=isnot)
             self.targets.append(target)
-            target.build(val)
+            target.build(val.value if isnot else val)
 
         tm = TypeMap(self.targets)
         for target in self.targets:

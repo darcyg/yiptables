@@ -6,6 +6,8 @@ vars:
   - iwan: eth0
   - vm_ports: 3306,4242:4244
   - wan_ports: 22,80,443
+  - !ifdef test:
+    - bite: machin
 
 filter:
   chains:

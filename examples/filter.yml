@@ -23,11 +23,21 @@
         - 0
         - 8
 
+    - target: DROP unwhitelisted connections to secret service
+      dport: 4242
+      saddr: !not 1.1.1.1
+
+
 - block:
     !rule chain: FORWARD
     !rule proto: tcp
+    !ifdef ivmd:
+      then:
+        testdef: 42
+      else:
+        testdef: 24
   rules:
-    - target: ACCEPT new connections to vm services
+    - target: 'ACCEPT new connections to vm services {testdef}'
       oface: '{ivm}'
       daddr: '{vm_ip}'
       state: NEW

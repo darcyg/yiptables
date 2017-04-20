@@ -40,7 +40,7 @@ class BaseTarget():
 
     @property
     def tneg(self):
-        return '!' if self.negated else ''
+        return ['!'] if self.negated else []
 
     def add_dep(self, dep):
         assert(type(dep) is str)
@@ -124,19 +124,19 @@ class Proto(ExclusiveTarget, Negable):
         if proto not in ('tcp', 'udp', 'icmp'):
             raise SyntaxError(f'Unknown protocol: `{proto}`')
 
-        self.add_target(f'{self.tneg} -p {proto}', k=2)
+        self.add_target(' '.join(self.tneg + ['-p', proto]), k=2)
 
 
 @_register_feature('iface')
 class IFace(ExclusiveTarget, Negable):
     def build(self, value):
-        self.add_target(f'{self.tneg} -i {self.str_resolve(value)}')
+        self.add_target(' '.join(self.tneg + ['-i', self.str_resolve(value)]))
 
 
 @_register_feature('oface')
 class OFace(ExclusiveTarget, Negable):
     def build(self, value):
-        self.add_target(f'{self.tneg} -o {self.str_resolve(value)}')
+        self.add_target(' '.join(self.tneg + ['-o', self.str_resolve(value)]))
 
 
 @_register_feature('state')
@@ -158,7 +158,9 @@ class PortTarget(ExclusiveTarget, Negable):
         if need_multiset:
             self.add_dep('multiport')
         opt_name = self.multi_opt_name if need_multiset else self.opt_name
-        self.add_target(f"--{opt_name} {self.tneg} {','.join(plist)}")
+        self.add_target(' '.join(
+            [f'--{opt_name}'] + self.tneg + [','.join(plist)]
+        ))
 
 
 @_register_feature('dport', 'dports')
@@ -176,25 +178,29 @@ class SPort(PortTarget):
 @_register_feature('saddr')
 class SAddr(ExclusiveTarget, Negable):
     def build(self, value):
-        self.add_target(f'{self.tneg} -s {self.str_resolve(value)}')
+        self.add_target(' '.join(self.tneg + ['-s', self.str_resolve(value)]))
 
 
 @_register_feature('daddr')
 class DAddr(ExclusiveTarget, Negable):
     def build(self, value):
-        self.add_target(f'{self.tneg} -d {self.str_resolve(value)}')
+        self.add_target(' '.join(self.tneg + ['-d', self.str_resolve(value)]))
 
 
 @_register_feature('to-saddr')
 class ToSAddr(ExclusiveTarget):
     def build(self, value):
-        self.add_target(f'--to-source {self.str_resolve(value)}')
+        self.add_target(' '.join(
+            self.tneg + ['--to-source', self.str_resolve(value)]
+        ))
 
 
 @_register_feature('to-daddr')
 class ToDAddr(ExclusiveTarget):
     def build(self, value):
-        self.add_target(f'--to-destination {self.str_resolve(value)}')
+        self.add_target(' '.join(
+            self.tneg + ['--to-destination', self.str_resolve(value)]
+        ))
 
 
 @_register_feature('icmp-type')
@@ -213,4 +219,4 @@ class IcmpType(ExclusiveTarget, Negable):
                 f"icmp-type requires a numeric parameter "
                 f"or 'all', got: `{ovalue}`"
             )
-        self.add_target(f'--icmp-type {self.tneg} {val}')
+        self.add_target(' '.join(['--icmp-type'] + self.tneg + [val]))

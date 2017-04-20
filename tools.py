@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from collections import ChainMap
 
 simple_format = re.compile(r'^{([^{} \t()\*\\=/%+-]+)}$')
 
@@ -92,41 +91,6 @@ def yip_listize(e, transform=lambda x: x):
     return [e]
 
 
-class Scope(ChainMap):
-    def sub_scope(self, local=None):
-        return self.new_child(local)
-
-    def get_vars(self, node, attr='vars'):
-        if attr is not None:
-            node = node.get(attr)
-            if node is None:
-                return
-        for k, v in yip_ld_iter(node):
-            self[k] = yip_format(self, v)
-
-
-class YipScope(Scope):
-    def __init__(self, *maps, rules=None):
-        super().__init__(*maps)
-        self.rule = Scope(*(rules if rules else {}))
-
-    def sub_scope(self, local=None, rlocal=None):
-        nscope = super().sub_scope(local=local)
-        nscope.rule = self.rule.sub_scope(local=rlocal)
-        return nscope
-
-    def get_vars(self, node, attr='vars'):
-        if attr is not None:
-            node = node.get(attr)
-            if node is None:
-                return
-        for k, v in yip_ld_iter(node):
-            isrule = isinstance(k, Rule)
-            scope = self.rule if isrule else self
-            key = k.value if isrule else k
-            scope[key] = yip_format(self, v)
-
-
 class Registrator():
     def __init__(self, fmap):
         self.fmap = fmap
@@ -142,16 +106,3 @@ class Registrator():
                 self.fmap[fname] = f
             return f
         return assign
-
-
-class Void(object):
-    def __init__(self, value):
-        self.value = value
-
-
-class Not(Void):
-    pass
-
-
-class Rule(Void):
-    pass

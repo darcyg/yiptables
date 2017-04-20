@@ -1,3 +1,4 @@
+#!/bin/python
 # Yiptables, a yaml to iptables-restore tranpiler
 # Copyright (C) 2017 Victor Collod <victor.collod@prologin.org>
 
@@ -17,7 +18,7 @@
 import argparse
 from loader import YipLoader
 from table import default_tables
-from tools import Scope, YipScope
+from scope import Scope, YipScope
 
 
 _default_chains = ('ACCEPT', 'DROP', 'RETURN')
