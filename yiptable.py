@@ -19,12 +19,15 @@ import argparse
 from loader import YipLoader
 from table import default_tables
 from scope import Scope, YipScope
-
+from meta import BaseMeta, meta, YipSyntaxError
 
 _default_chains = ('ACCEPT', 'DROP', 'RETURN')
 
 
-class Yip():
+class Yip(BaseMeta):
+    def __meta__(self):
+        return meta(self.tree)
+
     def __init__(self, path, default_chains=_default_chains):
         self.scope = YipScope()
         self.path = path
@@ -55,4 +58,7 @@ if __name__ == '__main__':
     options = Options()
     parser = argparse.ArgumentParser()
     parser.add_argument('firewall', help='source file')
-    print(Yip(parser.parse_args().firewall).render())
+    try:
+        print(Yip(parser.parse_args().firewall).render())
+    except YipSyntaxError as e:
+        print(str(e))

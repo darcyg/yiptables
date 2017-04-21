@@ -15,13 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+from meta import YipSyntaxError
 
 simple_format = re.compile(r'^{([^{} \t()\*\\=/%+-]+)}$')
 
 
 def yip_stringize(e):
     if not any(map(lambda x: isinstance(e, x), (int, str))):
-        raise SyntaxError(f'Element is not a string: {e}')
+        raise YipSyntaxError(e, f'Element is not a string: {e}')
     return str(e)
 
 
@@ -33,7 +34,7 @@ def yip_get_single_var(scope, string):
         vname = match.group(1)
         lookup_res = scope.get(vname)
         if lookup_res is None:
-            raise SyntaxError(f'Undefined variable `{vname}`')
+            raise YipSyntaxError(string, f'Undefined variable `{vname}`')
         return lookup_res
     return None
 
@@ -68,7 +69,7 @@ def yip_ld_iter(ld):
     elif isinstance(ld, dict):
         yield from ld.items()
     else:
-        raise SyntaxError(f'Cannot iterate as dict on: {ld}')
+        raise YipSyntaxError(ld, f'Cannot iterate as dict on: {ld}')
 
 
 def yip_flatten_iter(l):
@@ -99,7 +100,8 @@ class Registrator():
         def assign(f):
             for fname in fnames:
                 if fname in self.fmap:
-                    raise SyntaxError(
+                    raise YipSyntaxError(
+                        fname,
                         f'feature token `{fname}` was'
                         f'used multiple times'
                     )

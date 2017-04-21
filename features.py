@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from meta import meta, BaseMeta, YipSyntaxError
 from tools import (
     yip_get_single_var,
     yip_format,
@@ -28,8 +29,11 @@ feature_map = {}
 _register_feature = Registrator(feature_map)
 
 
-class BaseTarget():
+class BaseTarget(BaseMeta):
     supports_negation = False
+
+    def __meta__(self):
+        return meta(self.rule)
 
     def __init__(self, rule, negated=False):
         self.rule = rule
@@ -77,7 +81,10 @@ class BaseTarget():
         for confl_type in self.conflicts:
             ilist = typemap.get(confl_type)
             if ilist and any(e is not self for e in ilist):
-                raise SyntaxError(f'{confl_type} conflicts with {self}')
+                raise YipSyntaxError(
+                    self,
+                    f'{confl_type} conflicts with {self}'
+                )
 
 
 class ExclusiveTarget(BaseTarget):
@@ -102,7 +109,7 @@ class Target(ExclusiveTarget):
         target = comment.pop(0).upper()
 
         if target not in self.rule.table.chains:
-            raise SyntaxError(f'Undefined target: {target}')
+            raise YipSyntaxError(rval, f'Undefined target: {target}')
         self.add_target(f'-j {target}', k=1)
 
         if comment:
@@ -118,11 +125,14 @@ class Proto(ExclusiveTarget, Negable):
         proto = self.str_resolve(value).lower()
         if proto in ('', 'all', 'any'):
             if self.negated:
-                raise SyntaxError(f"Can't negate the '{proto}' proto")
+                raise YipSyntaxError(
+                    self,
+                    f"Can't negate the '{proto}' proto"
+                )
             return
 
         if proto not in ('tcp', 'udp', 'icmp'):
-            raise SyntaxError(f'Unknown protocol: `{proto}`')
+            raise YipSyntaxError(self, f'Unknown protocol: `{proto}`')
 
         self.add_target(' '.join(self.tneg + ['-p', proto]), k=2)
 
@@ -215,7 +225,8 @@ class IcmpType(ExclusiveTarget, Negable):
             else:
                 val = str(int(value))
         else:
-            raise SyntaxError(
+            raise YipSyntaxError(
+                self,
                 f"icmp-type requires a numeric parameter "
                 f"or 'all', got: `{ovalue}`"
             )

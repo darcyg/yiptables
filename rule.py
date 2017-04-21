@@ -16,6 +16,7 @@
 
 from ast_nodes import Not
 from features import feature_map
+from meta import BaseMeta, meta, YipSyntaxError, hasmeta
 
 
 class TypeMap(dict):
@@ -33,7 +34,10 @@ class TypeMap(dict):
             self[et] = {e}
 
 
-class Rule():
+class Rule(BaseMeta):
+    def __meta__(self):
+        return meta(self.node)
+
     def __init__(self, table, scope=None, rtype='-A'):
         self.scope = table.scope.sub_scope() if scope is None else scope
         self.table = table
@@ -41,20 +45,23 @@ class Rule():
         self.targets = []
         self.chain = None
         self.rtype = rtype
-        self.used_features = set()
         self.tokens = []
 
     def check(self):
-        assert(self.chain)
+        if self.chain is None:
+            raise YipSyntaxError(
+                self,
+                'missing chain in rule'
+            )
 
     def build(self, node):
+        assert(hasmeta(node))
+        self.node = node
         node_scope = self.scope.rule
         node_scope.get_vars(node, None, self.scope, node_scope, to_rule=True)
-        print(f'node: {node}')
-        print(f'rule scope: {node_scope}')
         for fname, val in node_scope.items():
             if fname not in feature_map:
-                raise SyntaxError(f'Unknown feature: {fname}')
+                raise YipSyntaxError(fname, f'Unknown feature: {fname}')
 
             isnot = isinstance(val, Not)
             target = feature_map[fname](self, negated=isnot)

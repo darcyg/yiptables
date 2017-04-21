@@ -17,14 +17,28 @@
 import yaml
 import os.path
 from ast_nodes import Not, Rule, IfDef
+from yaml.resolver import Resolver
+from yaml.composer import Composer
+from yaml.reader import Reader
+from yaml.scanner import Scanner
+from yaml.parser import Parser
+from constructor import YipConstructor as YipCons
+from meta import BaseMeta, Meta
 
 
-class YipLoader(yaml.Loader):
+# yaml.Loader,
+class YipLoader(BaseMeta, Reader, Scanner, Parser, Composer, YipCons, Resolver):
     def __init__(self, stream):
+        self.meta = Meta(stream, 1, 1)
         self._root = os.path.split(stream.name)[0]
-        super().__init__(stream)
+        Reader.__init__(self, stream)
+        Scanner.__init__(self)
+        Parser.__init__(self)
+        Composer.__init__(self)
+        YipCons.__init__(self)
+        Resolver.__init__(self)
 
-    def include_handler(self, node):
+    def import_handler(self, node):
         filename = os.path.join(self._root, self.construct_scalar(node))
         with open(filename, 'r') as f:
             return yaml.load(f, YipLoader)
@@ -38,12 +52,11 @@ class YipLoader(yaml.Loader):
     def not_handler(self, node):
         return Not(self.construct_scalar(node))
 
-    @classmethod
-    def load(cls, fd):
-        return yaml.load(fd, cls)
+    def load(fd):
+        return yaml.load(fd, YipLoader)
 
 
-YipLoader.add_constructor('!import', YipLoader.include_handler)
+YipLoader.add_constructor('!import', YipLoader.import_handler)
 YipLoader.add_constructor('!rule', YipLoader.rule_handler)
 YipLoader.add_constructor('!not', YipLoader.not_handler)
 YipLoader.add_constructor('!ifdef', YipLoader.ifdef_handler)

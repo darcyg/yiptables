@@ -14,8 +14,6 @@ class Scope(ChainMap):
             if node is None:
                 return
         for k, v in yip_ld_iter(node):
-            print(f'k: {k}')
-            print(f'v: {v}')
             scope = rules if to_rule else vars
 
             if isinstance(k, Rule):
@@ -23,10 +21,7 @@ class Scope(ChainMap):
                 scope = rules
                 k = k.value
             elif isinstance(k, IfDef):
-                print('IFDEF')
-                print(f'into: {scope}')
                 istrue = k.value in scope
-                print(f'test result: {istrue}')
                 if isinstance(v, dict):
                     if_block = v.get('then')
                     if if_block is None:
@@ -36,9 +31,7 @@ class Scope(ChainMap):
                 else:
                     sub_block = v if istrue else None
                 if sub_block is not None:
-                    print(f'loading vars from: {sub_block}')
                     scope.get_vars(sub_block, None, vars, rules, to_rule)
-                    print(f'done: {scope}')
                 continue
 
             if isinstance(v, Not):

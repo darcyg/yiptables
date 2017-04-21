@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from meta import BaseMeta, meta, YipSyntaxError, hasmeta
 from rule import Rule
 from tools import (
     yip_flatten_iter,
@@ -23,8 +24,11 @@ from tools import (
 )
 
 
-class Table():
+class Table(BaseMeta):
     default_chains = []
+
+    def __meta__(self):
+        return meta(self.node)
 
     def __init__(self, yip, name):
         self.yip = yip
@@ -39,7 +43,10 @@ class Table():
 
     def add_chain(self, chain, policy):
         if chain in self.chains:
-            raise SyntaxError(f'Redundant target declaration for: {chain}')
+            raise YipSyntaxError(
+                self,
+                f'Redundant target declaration for: {chain}'
+            )
         self.chains[chain] = policy
 
     def add_rule(self, rule_node, scope=None):
@@ -48,12 +55,13 @@ class Table():
         rule.build(rule_node)
 
     def build_chains(self, node):
+        self.node = node
         assert(isinstance(node, dict))
         for cname, target in yip_dict_format(self.scope, node).items():
             if target not in self.chains:
-                raise SyntaxError(f'Unknown target: {target}')
+                raise YipSyntaxError(target, f'Unknown target: {target}')
             if cname in self.chains:
-                raise SyntaxError(f'Tried to redefine chain: {cname}')
+                raise YipSyntaxError(cname, f'Tried to redefine chain: {cname}')
             self.chains[cname] = target
 
     def build_rules(self, node, scope):
@@ -74,7 +82,10 @@ class Table():
             if 'block' in rule_node:
                 subrules = rule_node.get('rules')
                 if not subrules:
-                    raise SyntaxError('block has no rules attribute')
+                    raise YipSyntaxError(
+                        rule_node,
+                        'block has no rules attribute'
+                    )
                 nscope = scope.sub_scope()
                 nscope.get_vars(rule_node, attr='block')
                 self.build_rules(subrules, nscope)
@@ -82,6 +93,7 @@ class Table():
                 self.add_rule(rule_node, scope)
 
     def build(self, node):
+        assert(hasmeta(node))
         chains_node = node.get('chains')
         if chains_node:
             self.build_chains(chains_node)
